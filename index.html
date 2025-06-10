@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rohit GPT</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f0f0f0;
+    }
+    #chat-container {
+      background-color: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+      width: 400px;
+      position: relative;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    #chat-history {
+      height: 300px;
+      overflow-y: scroll;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+    }
+    .user-message {
+      text-align: right;
+      background-color: #dff0d8;
+      padding: 8px;
+      border-radius: 10px;
+      margin-bottom: 5px;
+    }
+    .bot-message {
+      text-align: left;
+      background-color: #e6e6fa;
+      padding: 8px;
+      border-radius: 10px;
+      margin-bottom: 5px;
+    }
+    form {
+      display: flex;
+    }
+    input {
+      flex-grow: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button, #mic-button {
+      margin-left: 8px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #loader {
+      display: none;
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+</head>
+<body>
+  <div id="chat-container">
+    <h1>Coder Army QnA</h1>
+    <div id="chat-history"></div>
+    <form id="chat-form">
+      <input type="text" id="user-input" placeholder="Type your message" autocomplete="off" />
+      <button type="submit">Send</button>
+    </form>
+    <div id="loader">
+      <img src="loader.gif" width="100px" alt="Loading..." />
+    </div>
+  </div>
+
+  <script>
+    const chatHistory = document.getElementById('chat-history');
+    const userInput = document.getElementById('user-input');
+    const form = document.getElementById('chat-form');
+    const micButton = document.getElementById('mic-button');
+    const loader = document.getElementById('loader');
+
+    function speak(text) {
+      const synth = window.speechSynthesis;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      synth.speak(utterance);
+    }
+
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      chatHistory.innerHTML += `<div class="user-message">${message}</div>`;
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+      userInput.value = '';
+      loader.style.display = 'block';
+
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userInput: message })
+        });
+
+        const data = await response.json();
+        const botMessage = data.response;
+        chatHistory.innerHTML += `<div class="bot-message">${botMessage}</div>`;
+        speak(botMessage);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+      } catch (err) {
+        console.error(err);
+        chatHistory.innerHTML += `<div class="bot-message">Sorry, there was an error processing your request.</div>`;
+      } finally {
+        loader.style.display = 'none';
+      }
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      sendMessage();
+    });
+
+    // Voice Recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.continuous = false;
+
+      micButton.addEventListener('click', () => {
+        recognition.start();
+      });
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        userInput.value = transcript;
+        form.dispatchEvent(new Event('submit'));
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+      };
+    } 
+  </script>
+</body>
+</html>
